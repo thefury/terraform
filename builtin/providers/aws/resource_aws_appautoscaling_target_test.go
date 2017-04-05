@@ -649,6 +649,58 @@ resource "aws_iam_role_policy_attachment" "emr-autoscaling-role" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforAutoScalingRole"
 }
 
+resource "aws_iam_role" "autoscale_role" {
+	name = "autoscalerole%d"
+	path = "/"
+
+	assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "application-autoscaling.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "autoscale_role_policy" {
+	name = "autoscalepolicy%d"
+	role = "${aws_iam_role.autoscale_role.id}"
+
+	policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecs:DescribeServices",
+                "ecs:UpdateService"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:DescribeAlarms"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+EOF
+}
+
 resource "aws_appautoscaling_target" "bar" {
 	service_namespace = "elasticmapreduce"
 	resource_id = "instancegroup/${aws_emr_cluster.tf-test-cluster.id}/${aws_emr_instance_group.task.id}"
@@ -658,7 +710,7 @@ resource "aws_appautoscaling_target" "bar" {
 	max_capacity = 8
 }
 
-`, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt)
+`, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt, rInt)
 }
 
 var testAccAWSAppautoscalingTargetSpotFleetRequestConfig = fmt.Sprintf(`
