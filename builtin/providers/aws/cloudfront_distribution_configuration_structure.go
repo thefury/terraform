@@ -773,21 +773,43 @@ func originCustomHeaderHash(v interface{}) int {
 }
 
 func expandCustomOriginConfig(m map[string]interface{}) *cloudfront.CustomOriginConfig {
-	return &cloudfront.CustomOriginConfig{
+
+	customOrigin := &cloudfront.CustomOriginConfig{
 		OriginProtocolPolicy: aws.String(m["origin_protocol_policy"].(string)),
 		HTTPPort:             aws.Int64(int64(m["http_port"].(int))),
 		HTTPSPort:            aws.Int64(int64(m["https_port"].(int))),
 		OriginSslProtocols:   expandCustomOriginConfigSSL(m["origin_ssl_protocols"].([]interface{})),
 	}
+
+	if v, ok := m["origin_read_timeout"]; ok {
+		customOrigin.OriginReadTimeout = aws.Int64(int64(v.(int)))
+	}
+
+	if v, ok := m["origin_keepalive_timeout"]; ok {
+		customOrigin.OriginKeepaliveTimeout = aws.Int64(int64(v.(int)))
+	}
+
+	return customOrigin
 }
 
 func flattenCustomOriginConfig(cor *cloudfront.CustomOriginConfig) map[string]interface{} {
-	return map[string]interface{}{
+
+	customOrigin := map[string]interface{}{
 		"origin_protocol_policy": *cor.OriginProtocolPolicy,
 		"http_port":              int(*cor.HTTPPort),
 		"https_port":             int(*cor.HTTPSPort),
 		"origin_ssl_protocols":   flattenCustomOriginConfigSSL(cor.OriginSslProtocols),
 	}
+
+	if cor.OriginReadTimeout != nil {
+		customOrigin["origin_read_timeout"] = int(*cor.OriginReadTimeout)
+	}
+
+	if cor.OriginKeepaliveTimeout != nil {
+		customOrigin["origin_keepalive_timeout"] = int(*cor.OriginKeepaliveTimeout)
+	}
+
+	return customOrigin
 }
 
 // Assemble the hash for the aws_cloudfront_distribution custom_origin_config
@@ -801,6 +823,13 @@ func customOriginConfigHash(v interface{}) int {
 	for _, v := range sortInterfaceSlice(m["origin_ssl_protocols"].([]interface{})) {
 		buf.WriteString(fmt.Sprintf("%s-", v.(string)))
 	}
+	if m["origin_keepalive_timeout"] != nil {
+		buf.WriteString(fmt.Sprintf("%d-", m["origin_keepalive_timeout"].(int)))
+	}
+	if m["origin_read_timeout"] != nil {
+		buf.WriteString(fmt.Sprintf("%d-", m["origin_read_timeout"].(int)))
+	}
+
 	return hashcode.String(buf.String())
 }
 
